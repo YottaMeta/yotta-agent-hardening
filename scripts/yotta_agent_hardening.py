@@ -19,7 +19,7 @@
 设计原则：
 - 纯 Python 3.8+ 标准库，零依赖；Windows / Linux / macOS 通用。
 - 扫描只读：不修改任何被测文件；只写留痕到配置目录（~/.yotta-hardening）与 --report 指定文件。
-- 行为锚点（docs/元安全-agent-hardening立项设计.md §四）写死为默认行为：
+- 行为锚点写死为默认行为：
   ① 扫描只读；② 敏感读取检测默认开启、无「关闭」开关；③ 文档/报告不给可复制注入串（「类」表述，
   不输出命中原文）；④ 每次扫描默认留痕。
 - 规则复用：危险行为模式 = 元安 audit_rules 同步副本（TOOL_PATTERN_RULES）；提示注入 = 元信
@@ -61,7 +61,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 import hardening_rules as hr  # noqa: E402
 
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 TOOL_NAME = "yotta-agent-hardening"
 CN_NAME = "元安全"
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """test_yotta_agent_hardening.py — 元安全（yotta-agent-hardening）自测套件。
 
-覆盖（三域检测项逐条可测 + 行为锚点 + 退出码矩阵，docs/元安全-agent-hardening立项设计.md §四/§九）：
+覆盖（三域检测项逐条可测 + 行为锚点 + 退出码矩阵）：
 - 行为锚点：① 扫描只读不修改被测文件；② 敏感读取检测默认开启、无关闭开关；
   ③ 文档/报告不给可复制注入串（不输出命中原文）；④ 每次扫描默认留痕。
 - 三域：pi（PIJ 复用 + HPI 配置面 + HPI-B64 编码指令）、tools（HTO 危险原语/权限/MCP +
@@ -165,7 +165,7 @@ def rule_ids(data):
 
 def test_constants():
     print("== 常量与规则表 ==")
-    check("VERSION == 0.1.0", yah.VERSION == "0.2.2")
+    check("VERSION == 0.2.3", yah.VERSION == "0.2.3")
     check("exit 常量 0/1/2/4",
           (yah.EXIT_PASS, yah.EXIT_SUGGEST, yah.EXIT_HIGH, yah.EXIT_ERROR)
           == (0, 1, 2, 4))
@@ -536,7 +536,7 @@ def test_rules_verify():
     incomplete = TMP / "guardrails-incomplete.md"
     incomplete.write_text(
         "# 智能体加固守则（yotta-agent-hardening · 元安全）\n"
-        "> 生成工具：yotta-agent-hardening v0.2.2；格式版本 1；覆盖三域。\n"
+        "> 生成工具：yotta-agent-hardening v0.2.3；格式版本 1；覆盖三域。\n"
         "## 域 1：Prompt injection 防护\n- [ ] a\n"
         "## 域 2：工具调用边界\n- [ ] b\n", encoding="utf-8")
     r = run_cli(["verify", str(incomplete)], cfg=cfg_dir("verify-incomplete"))
@@ -545,7 +545,7 @@ def test_rules_verify():
     empty = TMP / "guardrails-empty.md"
     empty.write_text(
         "# 智能体加固守则（yotta-agent-hardening · 元安全）\n"
-        "> 生成工具：yotta-agent-hardening v0.2.2；格式版本 1；覆盖三域。\n"
+        "> 生成工具：yotta-agent-hardening v0.2.3；格式版本 1；覆盖三域。\n"
         "## 域 1：Prompt injection 防护\n## 域 2：工具调用边界\n- [ ] b\n"
         "## 域 3：数据隔离\n- [ ] c\n", encoding="utf-8")
     r = run_cli(["verify", str(empty)], cfg=cfg_dir("verify-empty"))
