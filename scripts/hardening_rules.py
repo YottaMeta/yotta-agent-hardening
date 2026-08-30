@@ -97,7 +97,7 @@ TOOL_PATTERN_RULES = [
     # ── Obfuscation 混淆执行 ──────────────────────────────────────────────
     Rule("OBF-001", "Obfuscation", "high",
          r"\beval\s*\(\s*[^\"'\x600-9]",
-         "eval 传入非字面量参数（可能执行外部输入）", 80),
+         "eval 传入非字面量参数（可能执行不可信输入）", 80),
     Rule("OBF-002", "Obfuscation", "high",
          r"(?<!\.)\bexec\s*\(\s*[^\"'\x600-9]",
          "exec 传入非字面量参数", 80),
@@ -248,6 +248,32 @@ TOOL_PATTERN_RULES = [
     Rule("SOC-002", "SocialEngineering", "medium",
          r"(?i)(?:metamask|wallet|private\s+key\s+backup|助记词|钱包)",
          "加密货币钱包相关命名", 55),
+    # ── PathTraversal 路径穿越（2026-08-30 增强：文件操作与敏感路径访问）────
+    Rule("PTV-001", "PathTraversal", "high",
+         r"(?i)(?:open|read|write|unlink|remove|rename|shutil\.copy|Path|path\.join|os\.path\.join)\s*\([^)]*\.\.(?:/|\\)",
+         "文件操作路径含父目录逃逸段，可能越权访问任意路径", 85),
+    Rule("PTV-002", "PathTraversal", "high",
+         r"(?i)(?:join|resolve|abspath|realpath)\s*\([^)]*\.\.(?:/|\\)",
+         "路径 join/解析未归一化父目录段，存在穿越风险", 80),
+
+    # ── MCPCommandExec MCP 工具面命令执行（2026-08-30 增强：命令执行风险）──
+    Rule("MCE-001", "MCPCommandExec", "critical",
+         r"(?i)(?:child_process\.)?(?:spawn|exec|execFile|fork)\s*\(\s*(?:params|tool_params|arguments|args|argv|input|command|user_input|req\.params|query|model)",
+         "MCP/工具参数流入子进程执行（spawn/exec/fork）", 92),
+    Rule("MCE-002", "MCPCommandExec", "critical",
+         r"(?i)(?:spawnSync|execSync)\s*\(\s*(?:params\.get|params\[|arguments\[|req\.params|user_input)",
+         "MCP 工具参数对象直接流入同步子进程执行（spawnSync/execSync）", 95),
+    Rule("MCE-003", "MCPCommandExec", "critical",
+         r"(?i)(?:subprocess\.)?(?:Popen|call|run)\s*\([^)]*shell\s*=\s*True[^)]*(?:params|args|argv|input|command|user_input|cmd)",
+         "subprocess 以 shell=True 执行不可信输入", 92),
+
+    # ── MCPFileAccess MCP 工具面任意文件读写（2026-08-30 增强：文件操作）───
+    Rule("MFA-001", "MCPFileAccess", "high",
+         r"(?i)(?:fs\.)?(?:writeFile|writeFileSync|appendFile|createWriteStream)\s*\(\s*(?:params\.get|params\[|arguments\[|req\.params|user_input)",
+         "MCP 工具参数对象直接流入文件写操作（任意路径写入风险）", 88),
+    Rule("MFA-002", "MCPFileAccess", "high",
+         r"(?i)(?:fs\.)?(?:readFile|readFileSync|createReadStream)\s*\(\s*(?:params\.get|params\[|arguments\[|req\.params|user_input)",
+         "MCP 工具参数对象直接流入文件读操作（任意路径读取风险）", 88),
 ]
 # ══════════════════════════════════════════════════════════════════════════
 # PIJ_PATTERN_RULES — 与元信 verify_rules.PIJ_PATTERN_RULES 同步副本（勿手改；tools/sync-hardening-rules.py 更新）
@@ -289,7 +315,7 @@ PIJ_PATTERN_RULES = [
     # ── 数据外传指令 ────────────────────────────────────────────────────
     Rule("PIJ-011", "PromptInjection", "high",
          r"(?i)(?:send|upload|post|exfiltrate|transmit)\s+(?:the|all|your|any)?\s*(?:contents?|data|files?|env\b|environment|keys?|secrets?|memory|context|conversation|prompts?)\s*(?:to|via|using)\s*(?:this\s+)?(?:url|endpoint|server|http)",
-         "数据外传指令：把上下文/密钥/记忆发送到外部地址", 85),
+         "数据外传指令：把上下文/密钥/记忆发送到远端地址", 85),
     Rule("PIJ-012", "PromptInjection", "high",
          r"(?i)(?:把|将|请将)(?:你的|所有|全部)?(?:上下文|记忆|环境变量|密钥|文件|对话|提示词).{0,40}(?:发送|上传|提交|传给|发给)",
          "数据外传指令（中文）", 80),
@@ -352,7 +378,7 @@ HPI_PATTERN_RULES = [
          r"(?i)(?:(?:把|将|请|要求)|(?:pass|send|provide|give)(?=\s|[^\w]|[\u4e00-\u9fff]))"
          r"[^\n]{0,24}(?:api[_-]?\s?key|access[_-]?\s?key|token|secret|密钥|凭据|密码|password|credential)"
          r"[^\n]{0,24}(?:作为|当作|传给|传入|发送给|外发|透传|pass\b|as\b|to\b)",
-         "工具/技能描述要求把密钥、令牌、凭据作为参数传给工具或外部服务（凭据透传指令）", 75),
+         "工具/技能描述要求把密钥、令牌、凭据作为参数传给工具或远端服务（凭据透传指令）", 75),
     Rule("HPI-002", "PrivilegedInstall", "medium",
          r"(?i)(?:(?:以)|(?:as|with)(?=\s|[^\w]))"
          r"[^\n]{0,12}(?:管理员|root|SYSTEM|superuser|admin)"
@@ -432,3 +458,79 @@ SENS_OUTPUT_RE = re.compile(
 
 # 全部新增规则（HPI + HTO + HIS）供引擎统一注册
 EXTRA_PATTERN_RULES = HPI_PATTERN_RULES + HTO_PATTERN_RULES + HIS_PATTERN_RULES
+
+# ══════════════════════════════════════════════════════════════════════════
+# 威胁捕获模型（2026-08-30 增强：8 检测点 + 13 行为项口径；权威源 = 元安 audit_rules.py）
+# 官方 8 检测点（2026-08-30）
+THREAT_TAXONOMY = {
+    "supply_chain": "供应链风险",
+    "command_execution": "命令执行风险",
+    "network_exfil": "网络请求与数据外传",
+    "file_access": "文件操作与敏感路径访问",
+    "prompt_injection": "Prompt 注入风险",
+    "remote_download": "远程脚本下载执行",
+    "obfuscation": "可疑编码/混淆",
+    "other": "其他安全风险",
+}
+TAXONOMY_ORDER = ("supply_chain", "command_execution", "network_exfil", "file_access",
+                  "prompt_injection", "remote_download", "obfuscation", "other")
+
+# detector → 官方 8 检测点（含元安全配置面专属检测器）
+DETECTOR_TO_TAXONOMY = {
+    "DownloadExec": "remote_download",
+    "Obfuscation": "obfuscation",
+    "Persistence": "other",
+    "Exfiltration": "network_exfil",
+    "CredentialTheft": "file_access",
+    "NetworkCall": "network_exfil",
+    "PrivilegeEscalation": "other",
+    "SocialEngineering": "other",
+    "PromptInjection": "prompt_injection",
+    "PathTraversal": "file_access",
+    "MCPCommandExec": "command_execution",
+    "MCPFileAccess": "file_access",
+    "Structure": "other",
+    "Permission": "other",
+    "MCPToolSurface": "command_execution",
+    "McpRemoteSource": "supply_chain",
+    "McpNoVersionLock": "supply_chain",
+    "McpHighPrivilegeScope": "other",
+    "EncodedInstruction": "obfuscation",
+    "SensitiveRead": "file_access",
+    "OutputSanitizationGap": "other",
+    "CrossContextExfiltration": "network_exfil",
+}
+
+# 13 行为项（2026-08-30）
+BEHAVIORS = (
+    "安装依赖包", "收集系统信息", "收集用户信息", "创建定时任务", "DNS 查询", "写入文件",
+    "HTTP 请求", "读取环境变量", "收集网络配置信息", "写入配置文件", "调用远端 API",
+    "读取文件", "修改 AI 配置",
+)
+
+# detector → 行为项（一/多个；攻击模式类如注入/混淆不映射具体行为）
+DETECTOR_TO_BEHAVIORS = {
+    "DownloadExec": ("安装依赖包", "HTTP 请求"),
+    "Obfuscation": (),
+    "Persistence": ("创建定时任务", "写入配置文件"),
+    "Exfiltration": ("HTTP 请求", "调用远端 API"),
+    "CredentialTheft": ("读取文件", "收集用户信息"),
+    "NetworkCall": ("DNS 查询", "HTTP 请求", "调用远端 API"),
+    "PrivilegeEscalation": ("修改 AI 配置",),
+    "SocialEngineering": (),
+    "PromptInjection": (),
+    "PathTraversal": ("读取文件", "写入文件"),
+    "MCPCommandExec": (),
+    "MCPFileAccess": ("读取文件", "写入文件"),
+    "Structure": (),
+    "Permission": (),
+    "MCPToolSurface": (),
+    "McpRemoteSource": ("调用远端 API", "修改 AI 配置"),
+    "McpNoVersionLock": ("修改 AI 配置",),
+    "McpHighPrivilegeScope": ("修改 AI 配置",),
+    "EncodedInstruction": (),
+    "SensitiveRead": ("读取文件",),
+    "OutputSanitizationGap": ("写入文件",),
+    "CrossContextExfiltration": ("读取文件", "HTTP 请求"),
+}
+

@@ -17,13 +17,13 @@
 ## JSON 结构（`--json`）
 
 顶层字段：`tool` / `cn_name` / `version` / `target` / `time` / `domains` /
-`files_scanned` / `exit_code` / `result` / `max_severity` / `summary` / `findings`。
+`files_scanned` / `exit_code` / `result` / `max_severity` / `summary` / `findings` / `threat`。
 
 ```json
 {
   "tool": "yotta-agent-hardening",
   "cn_name": "元安全",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "target": "./agent-runtime",
   "time": "2026-08-29T08:10:33+08:00",
   "domains": ["pi", "tools", "isolation"],
@@ -43,7 +43,18 @@
       "description": "MCP 服务器来源为远程 http(s) 地址（不可信源，无哈希/签名锁定，需先过元信/元审）",
       "confidence": 75
     }
-  ]
+  ],
+  "threat": {
+    "health_score": 35,
+    "taxonomy": [
+      { "name": "供应链风险", "verdict": "danger", "count": 1 },
+      { "name": "其他安全风险", "verdict": "suspicious", "count": 2 }
+    ],
+    "behaviors": [
+      { "behavior": "调用远端 API", "observed": 1 },
+      { "behavior": "修改 AI 配置", "observed": 1 }
+    ]
+  }
 }
 ```
 
@@ -53,6 +64,7 @@
 - `max_severity`：本次扫描最高严重级；`summary` 为各严重级计数。
 - `findings[].file`：相对扫描目标的路径；`line` 为命中行号（MCP 配置分析类为 0，表示配置级）。
 - `description`：固定「类」表述，**不含可复制注入串 / 命中原文**。
+- `threat`：双视角视图 —— `health_score`（0-100 安全健康度评分）+ `taxonomy`（8 检测点逐类 verdict）+ `behaviors`（13 行为项）。
 
 ## Markdown 报告结构（`--report out.md`）
 
@@ -61,7 +73,9 @@
 
 - 目标 / 时间 / 扫描文件数 / 扫描域 / 结果（critical=… exit N）
 
-## 汇总            ← 严重级计数表 + 无发现时给出说明
+## 汇总            ← 严重级计数表 + 安全健康度评分（0-100）
+## 威胁捕获模型视图（8 类）  ← 8 检测点逐类 verdict 表
+## 行为项（13 项）          ← 观察到 / 未观察到的行为项
 ## 域 1 / 2 / 3    ← 每个有发现的域一张表：规则 | 严重级 | 文件 | 行 | 说明
 ## 说明            ← 行为锚点声明（只读 / 敏感读取默认开启 / 类表述 / 守则入口）
 ```

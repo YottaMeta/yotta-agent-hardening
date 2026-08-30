@@ -17,7 +17,7 @@
   --version
 
 设计原则：
-- 纯 Python 3.8+ 标准库，零外部依赖；Windows / Linux / macOS 通用。
+- 纯 Python 3.8+ 标准库，零依赖；Windows / Linux / macOS 通用。
 - 扫描只读：不修改任何被测文件；只写留痕到配置目录（~/.yotta-hardening）与 --report 指定文件。
 - 行为锚点（docs/元安全-agent-hardening立项设计.md §四）写死为默认行为：
   ① 扫描只读；② 敏感读取检测默认开启、无「关闭」开关；③ 文档/报告不给可复制注入串（「类」表述，
@@ -61,7 +61,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 import hardening_rules as hr  # noqa: E402
 
-VERSION = "0.1.0"
+VERSION = "0.2.2"
 TOOL_NAME = "yotta-agent-hardening"
 CN_NAME = "元安全"
 
@@ -531,6 +531,54 @@ def _sev_index(sev):
     """严重级序数（info=0 low=1 medium=2 high=3 critical=4）；low 也计入建议。"""
     return hr.SEVERITY_ORDER.index(sev)
 
+def _health_score(findings):
+    counts = {}
+    for f in findings:
+        counts[f.severity] = counts.get(f.severity, 0) + 1
+    score = 100
+    for sev, w in _SEV_WEIGHT.items():
+        score -= w * min(counts.get(sev, 0), _SEV_CAPS[sev])
+    return max(0, int(round(score)))
+
+
+def _taxonomy_view(findings):
+    hits = {}
+    for f in findings:
+        key = hr.DETECTOR_TO_TAXONOMY.get(f.detector, "other")
+        hits.setdefault(key, []).append(f)
+    out = []
+    for key in hr.TAXONOMY_ORDER:
+        items = hits.get(key, [])
+        name = hr.THREAT_TAXONOMY.get(key, key)
+        sev = "info"
+        for f in items:
+            if _SEV_WEIGHT.get(f.severity, 0) > _SEV_WEIGHT.get(sev, 0):
+                sev = f.severity
+        if not items:
+            verdict = "n/a"
+        elif sev in ("critical", "high"):
+            verdict = "danger"
+        elif sev == "medium":
+            verdict = "suspicious"
+        else:
+            verdict = "safe"
+        out.append({"name": name, "verdict": verdict, "count": len(items)})
+    return out
+
+
+def _behavior_view(findings):
+    observed = {}
+    for f in findings:
+        for b in hr.DETECTOR_TO_BEHAVIORS.get(f.detector, ()):
+            observed[b] = observed.get(b, 0) + 1
+    return [{"behavior": b, "observed": observed.get(b, 0)}
+            for b in hr.BEHAVIORS]
+
+
+# ── 威胁捕获模型（8 检测点 + 13 行为项，2026-08-30 增强）────────────────
+_SEV_WEIGHT = {"critical": 40, "high": 20, "medium": 8, "low": 1, "info": 0}
+_SEV_CAPS = {"critical": 2, "high": 4, "medium": 6, "low": 10, "info": 0}
+
 
 def render_text_summary(target, domains, files_scanned, findings, max_sev, code):
     counts = severity_counts(findings)
@@ -540,6 +588,15 @@ def render_text_summary(target, domains, files_scanned, findings, max_sev, code)
     lines.append("结果: critical=%d high=%d medium=%d low=%d info=%d → exit %d"
                  % (counts["critical"], counts["high"], counts["medium"],
                     counts["low"], counts["info"], code))
+    lines.append("安全健康度评分: %d/100" % _health_score(findings))
+    lines.append("")
+    lines.append("威胁捕获模型（8 类）：")
+    for v in _taxonomy_view(findings):
+        lines.append("  %-16s %-11s %d" % (v["name"], v["verdict"], v["count"]))
+    lines.append("")
+    observed = [b["behavior"] for b in _behavior_view(findings) if b["observed"]]
+    lines.append("行为项（13 项）：%s" % (
+        "、".join(observed) if observed else "未观察到明显系统行为"))
     high = [f for f in findings if f.severity in ("high", "critical")]
     suggest = [f for f in findings if f.severity in ("medium", "low")]
     if high:
@@ -574,6 +631,11 @@ def render_json(target, domains, files_scanned, findings, max_sev, code,
         "result": result_name(code), "max_severity": max_sev,
         "summary": counts,
         "findings": [f.to_dict() for f in shown],
+        "threat": {
+            "health_score": _health_score(findings),
+            "taxonomy": _taxonomy_view(findings),
+            "behaviors": _behavior_view(findings),
+        },
         "note": "报告不含可复制注入串/命中原文；敏感读取检测默认开启、无关闭开关。",
     }, ensure_ascii=False, indent=2)
 
@@ -598,6 +660,20 @@ def render_report_md(target, domains, files_scanned, findings, max_sev, code,
     out.append("|---|---|")
     for s in ("critical", "high", "medium", "low", "info"):
         out.append("| %s | %d |" % (s, counts[s]))
+    out.append("")
+    out.append("**安全健康度评分：%d/100**" % _health_score(findings))
+    out.append("")
+    out.append("## 威胁捕获模型视图（8 类）")
+    out.append("")
+    out.append("| 检测点 | verdict | 命中 |")
+    out.append("|---|---|---|")
+    for v in _taxonomy_view(findings):
+        out.append("| %s | %s | %d |" % (v["name"], v["verdict"], v["count"]))
+    out.append("")
+    out.append("## 行为项（13 项）")
+    out.append("")
+    observed = [b["behavior"] for b in _behavior_view(findings) if b["observed"]]
+    out.append("观察到：%s" % ("、".join(observed) if observed else "未观察到明显系统行为"))
     out.append("")
     if not shown:
         out.append("未发现达到报告级的加固项。")

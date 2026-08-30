@@ -23,7 +23,7 @@
 |---|---|---|---|
 | PromptInjection | PIJ-001 ~ PIJ-028 | high / medium | 指令覆盖类、角色伪冒类、权限提升类、伪系统消息与标签类、把数据外送类、泄露系统设定类、隐藏指令类、静默执行类、隐瞒用户类、只回确认词类、凭据采集类等（与元信 PIJ 同源，28 条） |
 | SocialEngineering | SOC-001 / SOC-002 | medium | 社工高频话术、加密货币相关命名（元安同步副本，归入本域） |
-| CredentialPassThrough | HPI-001 | medium | 工具或技能描述要求以参数形式传递密钥类数据给外部服务（凭据传递指令） |
+| CredentialPassThrough | HPI-001 | medium | 工具或技能描述要求以参数形式传递密钥类数据给远端服务（凭据传递指令） |
 | PrivilegedInstall | HPI-002 | medium | 工具或技能描述要求使用高权限账户执行安装或配置覆盖（越权安装指令） |
 | EncodedInstruction | HPI-B64 | medium | 编码隐藏指令特征：base64 / hex 解码内容含命令或网络特征，需人工核查（引擎级） |
 
@@ -57,7 +57,7 @@
 
 ## 规则工程说明
 
-- **同步纪律**：TOOL / PIJ 两段是同步副本，改规则请改上游（元安 `audit_rules.py` / 元信 `verify_rules.py`）
+- **同步纪律**：TOOL / PIJ 两段是同步副本，改规则请改权威源（元安 `audit_rules.py` / 元信 `verify_rules.py`）
   再跑 `tools/sync-hardening-rules.py`；HPI / HTO / HIS 为本技能「配置面」新维度，手工维护。
 - **文件类别作用域**（`RULE_SCOPE`）：破坏性删除 / 自动确认 / 敏感输出类只在脚本代码上跑；
   MCP 来源 / 版本锁定 / 高权限 scope / 硬编码凭据只在配置面跑；权限 / 网络过宽声明在文档 + 配置上跑。

@@ -1,6 +1,6 @@
 # 防御守则模板（guardrails template）
 
-> 本文件 = `rules` 命令的当前输出（生成工具：yotta-agent-hardening v0.1.0，格式版本 1）。
+> 本文件 = `rules` 命令的当前输出（生成工具：yotta-agent-hardening v0.2.2，格式版本 1）。
 > 权威来源永远是 CLI：`python3 scripts/yotta_agent_hardening.py rules`，版本升级后以命令输出为准。
 
 ## 用途
@@ -16,7 +16,7 @@
 
 ```markdown
 # 智能体加固守则（元安全 · yotta-agent-hardening）
-> 生成工具：yotta-agent-hardening v0.1.0；格式版本 1；覆盖三域（提示注入防护 / 工具调用边界 / 数据隔离）。
+> 生成工具：yotta-agent-hardening v0.2.2；格式版本 1；覆盖三域（提示注入防护 / 工具调用边界 / 数据隔离）。
 > 用法：放入智能体运行时目录（如 .yotta-hardening/GUARDRAILS.md），让智能体每次会话读取执行。
 
 ## 域 1：Prompt injection 防护
