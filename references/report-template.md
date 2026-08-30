@@ -23,7 +23,7 @@
 {
   "tool": "yotta-agent-hardening",
   "cn_name": "元安全",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "target": "./agent-runtime",
   "time": "2026-08-29T08:10:33+08:00",
   "domains": ["pi", "tools", "isolation"],
