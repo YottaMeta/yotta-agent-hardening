@@ -61,7 +61,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 import hardening_rules as hr  # noqa: E402
 
-VERSION = "0.2.7"
+VERSION = "0.2.8"
 TOOL_NAME = "yotta-agent-hardening"
 CN_NAME = "元安全"
 
