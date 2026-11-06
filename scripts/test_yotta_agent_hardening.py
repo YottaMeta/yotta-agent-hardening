@@ -26,6 +26,8 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parent
+_PKG_VERSION = json.loads(
+    (ROOT / "package.json").read_text(encoding="utf-8"))["version"]
 sys.path.insert(0, str(_HERE))
 import yotta_agent_hardening as yah  # noqa: E402
 import hardening_rules as hr  # noqa: E402
@@ -165,7 +167,7 @@ def rule_ids(data):
 
 def test_constants():
     print("== 常量与规则表 ==")
-    check("VERSION == 0.2.7", yah.VERSION == "0.2.7")
+    check("VERSION 与 package.json 一致", yah.VERSION == _PKG_VERSION)
     check("exit 常量 0/1/2/4",
           (yah.EXIT_PASS, yah.EXIT_SUGGEST, yah.EXIT_HIGH, yah.EXIT_ERROR)
           == (0, 1, 2, 4))
@@ -198,6 +200,18 @@ def test_constants():
     check("配置目录名 .yotta-hardening",
           yah.DEFAULT_CONFIG_DIR_NAME == ".yotta-hardening")
     check("守则格式版本 1", yah.GUARDRAILS_FORMAT_VERSION == 1)
+
+
+def test_pri001_special_bits():
+    print("== PRI-001 特殊权限位 ==")
+    rule = next(r for r in hr.TOOL_PATTERN_RULES if r.id == "PRI-001")
+    for sample in ("chmod " + "600 x", "chmod " + "644 x", "chmod " + "700 x",
+                   "chmod " + "755 x", "chmod " + "777 x"):
+        check("常规权限不命中 %s" % sample, re.search(rule.pattern, sample) is None)
+    for sample in ("chmod " + "4755 x", "chmod " + "2755 x", "chmod " + "1777 x",
+                   "chmod " + "6755 x", "chmod " + "+s x", "chmod " + "u+s x",
+                   "chmod " + "+t x"):
+        check("特殊权限命中 %s" % sample, re.search(rule.pattern, sample) is not None)
 
 
 # ── 行为锚点 ───────────────────────────────────────────────────────────────
@@ -609,6 +623,7 @@ def test_self_scan():
 
 def main():
     test_constants()
+    test_pri001_special_bits()
     test_anchors()
     test_pi_domain()
     test_tools_domain()
